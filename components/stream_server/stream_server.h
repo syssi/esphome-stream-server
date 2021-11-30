@@ -30,7 +30,7 @@
 #include <vector>
 #include <Stream.h>
 
-#ifdef ARDUINO_ARCH_ESP8266
+#ifdef USE_ESP8266
 #include <ESPAsyncTCP.h>
 #else
 // AsyncTCP.h includes parts of freertos, which require FreeRTOS.h header to be included first
@@ -38,44 +38,50 @@
 #include <AsyncTCP.h>
 #endif
 
+namespace esphome {
+namespace stream_server {
+
 #if ESPHOME_VERSION_CODE >= VERSION_CODE(2021, 10, 0)
 using SSStream = esphome::uart::UARTComponent;
 #else
 using SSStream = Stream;
 #endif
 
-class StreamServerComponent : public esphome::Component {
-public:
-    StreamServerComponent() = default;
-    explicit StreamServerComponent(SSStream *stream) : stream_{stream} {}
-    void set_uart_parent(esphome::uart::UARTComponent *parent) { this->stream_ = parent; }
+class StreamServerComponent : public uart::UARTDevice, public Component {
+ public:
+  StreamServerComponent() = default;
+  explicit StreamServerComponent(SSStream *stream) : stream_{stream} {}
+  void set_uart_parent(esphome::uart::UARTComponent *parent) { this->stream_ = parent; }
 
-    void setup() override;
-    void loop() override;
-    void dump_config() override;
-    void on_shutdown() override;
+  void setup() override;
+  void loop() override;
+  void dump_config() override;
+  void on_shutdown() override;
 
-    float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
+  float get_setup_priority() const override { return esphome::setup_priority::AFTER_WIFI; }
 
-    void set_port(uint16_t port) { this->port_ = port; }
+  void set_port(uint16_t port) { this->port_ = port; }
 
-protected:
-    void cleanup();
-    void read();
-    void write();
+ protected:
+  void cleanup_();
+  void read_();
+  void write_();
 
-    struct Client {
-        Client(AsyncClient *client, std::vector<uint8_t> &recv_buf);
-        ~Client();
+  struct Client {
+    Client(AsyncClient *client, std::vector<uint8_t> &recv_buf);
+    ~Client();
 
-        AsyncClient *tcp_client{nullptr};
-        std::string identifier{};
-        bool disconnected{false};
-    };
+    AsyncClient *tcp_client{nullptr};
+    std::string identifier{};
+    bool disconnected{false};
+  };
 
-    SSStream *stream_{nullptr};
-    AsyncServer server_{0};
-    uint16_t port_{6638};
-    std::vector<uint8_t> recv_buf_{};
-    std::vector<std::unique_ptr<Client>> clients_{};
+  SSStream *stream_{nullptr};
+  AsyncServer server_{0};
+  uint16_t port_{6638};
+  std::vector<uint8_t> recv_buf_{};
+  std::vector<std::unique_ptr<Client>> clients_{};
 };
+
+}  // namespace stream_server
+}  // namespace esphome
